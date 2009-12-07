@@ -44,6 +44,13 @@ module Netflix
         titles = Hash.from_xml(response)["autocomplete"]["autocomplete_item"].map { |i| i["title"]["short"] }
       end
       
+      # Find a movie by its Netflix ID.
+      def find(netflix_id)
+        response = signed_request "GET", "catalog/titles/movies/#{netflix_id}"
+        raise Error, "Movie not found!" if response.nil? || response.empty?
+        parse_one response
+      end
+      
       # Search for all reviews with a query.
       #
       # ==== Attributes
@@ -73,6 +80,10 @@ module Netflix
         parse_many response
       end
       
+      def index
+        # TODO
+      end
+      
       protected
       # Parses a response xml string for reviews.
       def parse_many(body) # :nodoc:
@@ -88,10 +99,10 @@ module Netflix
 
       # Parses a response xml string for a review.
       def parse_one(body) # :nodoc:
-        # json = ActiveSupport::JSON.decode(body)
-        # result = json['results'].first
-        # raise Error, "That artist not found!" if result.nil? || json['status'] == 'ERROR'
-        # instantiate result
+        xml = Hash.from_xml(body)
+        result = xml["catalog_title"]
+        # raise Error, "That movie not found!" if result.nil?
+        instantiate result
       end
       
       def instantiate(entry={})
@@ -131,10 +142,31 @@ module Netflix
       @synopsis = Hash.from_xml(response)['synopsis'] rescue nil
     end
 
-    def similars
-      return @similars if @similars
-      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/similars"
-      pp Hash.from_xml(response)['similars'] rescue []
+    # start_index
+    #
+    # ==== Attributes
+    #
+    # * +term+ - The word or term for which to search in the catalog. The method searches the title and 
+    #            synopses of catalog titles fields for a match.
+    # * +options+ - 
+    #    * <tt>:page/tt> - the page number of results; 20 shown at a time (default is 1, per_page is required) 
+    #    * <tt>:per_page</tt> - the maximum number of results to return. This number cannot be greater than 100. 
+    #                           If max_results is not specified, the default value is 25.
+    #
+    def similars(options={})
+      options.symbolize_keys!
+
+      params                   = {}
+      params[:start_index]     = ((options[:page] - 1) * 20) if options[:page]
+      params[:max_results]     = options[:per_page] if options[:per_page]
+
+      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/similars", params
+      items = Hash.from_xml(response)["similars"]["similars_item"]
+      if items.is_a?(Hash) # one
+        Movie.send(:instantiate, s)
+      else #many
+        items.map { |m| Movie.send(:instantiate, m) }
+      end
     end
   end
 end
