@@ -2,10 +2,10 @@ module Netflix
   # This class represents a title in the Netflix catalog
   class Movie < Base
     attr_accessor :netflix_id, :url, :title, :short_title, :box_art_small, :box_art_medium, :box_art_large, 
-      :synopsis_url, :release_year, :mpaa_rating, :genres,
+      :release_year, :mpaa_rating, :genres, :average_rating,
       # urls
-      :cast_url, :directors_url, :formats_url,:screen_formats_url, :awards_url, :webpage_url,
-      :languages_and_audio_url, :average_rating, :similars_url, :official_webpage_url
+      :cast_url, :directors_url, :formats_url, :screen_formats_url, :awards_url, :webpage_url,
+      :languages_and_audio_url, :similars_url, :official_webpage_url, :synopsis_url
 
     class Award
       attr_accessor :award_url, :award_name, :category, :recipient, :year
@@ -139,7 +139,35 @@ module Netflix
     def synopsis
       return @synopsis if @synopsis
       response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/synopsis"
-      @synopsis = Hash.from_xml(response)['synopsis'] rescue nil
+      @synopsis = Hash.from_xml(response)["synopsis"] rescue nil
+    end
+
+    
+    def languages_and_audio
+      return @languages_and_audio if @languages_and_audio
+      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/languages_and_audio"
+      by_format = Hash.from_xml(response)["languages_and_audio"]["language_audio_format"]
+      # TODO
+    end
+    
+    def formats
+      return @formats if @formats
+      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/format_availability"
+      @formats = Hash.from_xml(response)["delivery_formats"]["availability"].map { |f| f["category"]["label"] } rescue nil
+    end
+    
+    def cast_url
+      # TODO
+    end
+    
+    def directors_url
+      # TODO
+    end
+    
+    def screen_formats
+      return @formats if @formats
+      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/screen_formats"
+      @formats = Hash.from_xml(response)["screen_formats"]["screen_format"].map { |f| f["category"].map { |g| g["label"] } } rescue nil
     end
 
     # start_index
@@ -164,7 +192,7 @@ module Netflix
       items = Hash.from_xml(response)["similars"]["similars_item"]
       if items.is_a?(Hash) # one
         Movie.send(:instantiate, s)
-      else #many
+      else # many
         items.map { |m| Movie.send(:instantiate, m) }
       end
     end
