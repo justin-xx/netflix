@@ -7,17 +7,6 @@ module Netflix
       :cast_url, :directors_url, :formats_url, :screen_formats_url, :awards_url, :webpage_url,
       :languages_and_audio_url, :similars_url, :official_webpage_url, :synopsis_url
 
-    class Award
-      attr_accessor :award_url, :award_name, :category, :recipient, :year
-      def initialize(entry)
-        self.award_url  = entry["category"]["scheme"] # http://api.netflix.com/categories/award_types/academy_awards
-        self.award_name = award_url.split('/').last   # academy_awards TODO parse correctly
-        self.category   = entry["category"]["label"]  # Best Supporting Actor
-        self.recipient  = entry["link"]["title"]      # Heath Ledger TODO parse robustly? 
-        self.year       = entry["year"]               # 2009
-      end
-    end
-
     #-----------------
     # Class Methods
     #-----------------
@@ -51,7 +40,7 @@ module Netflix
         parse_one response
       end
       
-      # Search for all reviews with a query.
+      # Search for all movies with a query.
       #
       # ==== Attributes
       #
@@ -85,19 +74,18 @@ module Netflix
       end
       
       protected
-      # Parses a response xml string for reviews.
+      # Parses a response xml string for movie.
       def parse_many(body) # :nodoc:
         xml = Hash.from_xml(body)
         results = xml["catalog_titles"]["catalog_title"]
         if results.is_a?(Hash) # one results
-          pp results
           instantiate results
         else # many results
           results.map { |result| instantiate result }
         end
       end
 
-      # Parses a response xml string for a review.
+      # Parses a response xml string for a movie.
       def parse_one(body) # :nodoc:
         xml = Hash.from_xml(body)
         result = xml["catalog_title"]
@@ -156,12 +144,16 @@ module Netflix
       @formats = Hash.from_xml(response)["delivery_formats"]["availability"].map { |f| f["category"]["label"] } rescue nil
     end
     
-    def cast_url
-      # TODO
+    def cast
+      return @cast if @cast
+      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/cast"
+      @cast = Person.send(:parse_many, response) rescue nil
     end
     
-    def directors_url
-      # TODO
+    def directors
+      return @directors if @directors
+      response = self.class.signed_request "GET", "catalog/titles/movies/#{@netflix_id}/directors"
+      @directors = Person.send(:parse_many, response) rescue nil
     end
     
     def screen_formats

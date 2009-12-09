@@ -8,6 +8,7 @@ require 'yaml'
 
 require 'lib/netflix/base'
 require 'lib/netflix/movie'
+require 'lib/netflix/award'
 require 'lib/netflix/person'
 
 module Netflix

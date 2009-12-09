@@ -35,7 +35,7 @@ module Netflix
           oauth_params = params.to_param # per oauth, automagically alphabetizes the params
           oauth_base_string = "#{e method}&#{e base_url}#{e '/'}#{e path}&#{e oauth_params}"
           signature = Base64.encode64(HMAC::SHA1.digest(secrets, oauth_base_string)).chomp.gsub(/\n/,'')
-          url = URI.escape "#{base_url}/#{path}?#{params.to_param}&oauth_signature=#{signature}"
+          url = "#{base_url}/#{path}?#{params.to_param}&oauth_signature=#{e signature}"
 
           response = nil
           seconds = Benchmark.realtime { response = open url }
@@ -89,7 +89,7 @@ module Netflix
     self.consumer_secret = settings['secret'].strip
     self.token_secret = "" # get from an oauth request
     self.debug = true if ENV['DEBUG']
-    self.retry_times = 3
+    self.retry_times = 0
 
     #-----------------
     # Instance Methods
